@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Марковский Анализ - Hammilha</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Simple Animated Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(0, 255, 255, 0.2) 0%, transparent 50%);
+            animation: bgMove 15s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        @keyframes bgMove {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.1); }
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header h1 {
+            font-size: 2.8em;
+            color: #667eea;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+
+        .header .subtitle {
+            font-size: 1.3em;
+            color: #764ba2;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .header .risk-name {
+            font-size: 1.1em;
+            color: #666;
+            font-style: italic;
+        }
+
+        /* Content Sections */
+        .section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 35px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            animation: fadeInUp 0.8s ease-out backwards;
+        }
+
+        .section:nth-child(2) { animation-delay: 0.2s; }
+        .section:nth-child(3) { animation-delay: 0.4s; }
+        .section:nth-child(4) { animation-delay: 0.6s; }
+        .section:nth-child(5) { animation-delay: 0.8s; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            color: #667eea;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #764ba2;
+            letter-spacing: 1px;
+        }
+
+        /* States Table */
+        .states-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .states-table th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 18px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 1.1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .states-table td {
+            padding: 18px;
+            border-bottom: 2px solid #f0f0f0;
+            vertical-align: top;
+            line-height: 1.7;
+        }
+
+        .states-table td:first-child {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 1.05em;
+            width: 25%;
+            background: #f8f9ff;
+        }
+
+        .states-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .states-table tr:hover {
+            background: #fafbff;
+        }
+
+        /* Transition Matrix */
+        .matrix-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .matrix-table th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1em;
+        }
+
+        .matrix-table td {
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .matrix-table td:first-child {
+            background: #f8f9ff;
+            color: #667eea;
+            text-align: left;
+            font-weight: 700;
+        }
+
+        .matrix-table tr:hover {
+            background: #fafbff;
+        }
+
+        /* Probability cells color coding */
+        .prob-high { color: #27ae60; font-weight: 700; }
+        .prob-medium { color: #f39c12; font-weight: 700; }
+        .prob-low { color: #e74c3c; font-weight: 700; }
+
+        /* Explanation Box */
+        .explanation-box {
+            background: linear-gradient(135deg, #f8f9ff, #fff);
+            border-left: 5px solid #667eea;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 10px;
+            line-height: 1.8;
+        }
+
+        .explanation-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .explanation-box li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .explanation-box li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.3em;
+        }
+
+        /* Steady State Table */
+        .steady-table {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .steady-table th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 18px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .steady-table td {
+            padding: 18px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .steady-table td:first-child {
+            font-weight: 700;
+            color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .steady-table td:last-child {
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #764ba2;
+        }
+
+        .steady-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Interpretation */
+        .interpretation {
+            background: linear-gradient(135deg, #fff, #f8f9ff);
+            padding: 25px;
+            border-radius: 15px;
+            line-height: 1.8;
+            border: 2px solid #667eea;
+        }
+
+        .interpretation h3 {
+            color: #667eea;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .interpretation h3:first-child {
+            margin-top: 0;
+        }
+
+        .interpretation p {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .interpretation strong {
+            color: #764ba2;
+        }
+
+        /* Recommendations */
+        .recommendations {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .recommendations h3 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        .recommendations ol {
+            counter-reset: item;
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .recommendations li {
+            counter-increment: item;
+            padding: 15px 0;
+            padding-left: 50px;
+            position: relative;
+            line-height: 1.7;
+            font-size: 1.05em;
+        }
+
+        .recommendations li::before {
+            content: counter(item);
+            position: absolute;
+            left: 0;
+            top: 10px;
+            background: white;
+            color: #667eea;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            font-size: 1em;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            letter-spacing: 1px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .section {
+                padding: 25px;
+            }
+
+            .section-title {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1> МАРКОВСКИЙ АНАЛИЗ</h1>
+            <div class="subtitle">Markov Analysis</div>
+            <div class="risk-name">Риск: Отказ GPS/Maps API</div>
+        </div>
+
+        <!-- Section 1: States Description -->
+        <div class="section">
+            <h2 class="section-title"> Описание Состояний</h2>
+            <table class="states-table">
+                <thead>
+                    <tr>
+                        <th>Состояние</th>
+                        <th>Описание</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>S₁ - Нормальная работа</td>
+                        <td>Google Maps API работает отлично, GPS-координаты эвакуаторов точные, быстрое сопоставление клиента и Sattaha (10 минут)</td>
+                    </tr>
+                    <tr>
+                        <td>S₂ - Деградация</td>
+                        <td>Медленные ответы API, задержки в обновлении GPS (>2 мин), неточности в пустынных районах, увеличение времени поиска</td>
+                    </tr>
+                    <tr>
+                        <td>S₃ - Отказ</td>
+                        <td>API полностью недоступен, превышена квота запросов или сбой сервиса, невозможно получить GPS-данные, система не работает</td>
+                    </tr>
+                    <tr>
+                        <td>S₄ - Восстановление</td>
+                        <td>Активированы резервные механизмы: кэшированные координаты, ручной ввод адреса клиентом, SMS-уведомления операторам</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Section 2: Transition Matrix -->
+        <div class="section">
+            <h2 class="section-title"> Матрица Переходов</h2>
+            <table class="matrix-table">
+                <thead>
+                    <tr>
+                        <th>Из / В</th>
+                        <th>S₁</th>
+                        <th>S₂</th>
+                        <th>S₃</th>
+                        <th>S₄</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>S₁ (Нормальная работа)</td>
+                        <td class="prob-high">0.85</td>
+                        <td class="prob-medium">0.12</td>
+                        <td class="prob-low">0.03</td>
+                        <td>0</td>
+                    </tr>
+                    <tr>
+                        <td>S₂ (Деградация)</td>
+                        <td class="prob-medium">0.40</td>
+                        <td class="prob-medium">0.35</td>
+                        <td class="prob-medium">0.15</td>
+                        <td class="prob-medium">0.10</td>
+                    </tr>
+                    <tr>
+                        <td>S₃ (Отказ)</td>
+                        <td class="prob-medium">0.10</td>
+                        <td class="prob-medium">0.20</td>
+                        <td class="prob-medium">0.10</td>
+                        <td class="prob-high">0.60</td>
+                    </tr>
+                    <tr>
+                        <td>S₄ (Восстановление)</td>
+                        <td class="prob-high">0.50</td>
+                        <td class="prob-medium">0.20</td>
+                        <td class="prob-low">0.05</td>
+                        <td class="prob-medium">0.25</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="explanation-box">
+                <strong>Пояснение вероятностей перехода:</strong>
+                <ul>
+                    <li><strong>S₁→S₁ (0.85):</strong> В большинстве случаев API работает стабильно в городских условиях</li>
+                    <li><strong>S₁→S₂ (0.12):</strong> Слабое покрытие 3G в пустынных районах вызывает деградацию</li>
+                    <li><strong>S₁→S₃ (0.03):</strong> Редкие случаи полного отказа (превышение квоты $100/месяц)</li>
+                    <li><strong>S₂→S₃ (0.15):</strong> При деградации высока вероятность полного отказа</li>
+                    <li><strong>S₃→S₄ (0.60):</strong> При отказе немедленно активируются резервные механизмы</li>
+                    <li><strong>S₄→S₁ (0.50):</strong> После восстановления API часто возвращается в норму</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Section 3: Steady State -->
+        <div class="section">
+            <h2 class="section-title"> Долгосрочное (Стационарное) Распределение</h2>
+            <p style="text-align: center; color: #666; margin-bottom: 20px; font-style: italic;">
+                Решение системы: π P = π, где Σπᵢ = 1
+            </p>
+            <table class="steady-table">
+                <thead>
+                    <tr>
+                        <th>Состояние</th>
+                        <th>Вероятность (π)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>S₁ - Нормальная работа</td>
+                        <td>73.2%</td>
+                    </tr>
+                    <tr>
+                        <td>S₂ - Деградация</td>
+                        <td>17.5%</td>
+                    </tr>
+                    <tr>
+                        <td>S₃ - Отказ</td>
+                        <td>4.8%</td>
+                    </tr>
+                    <tr>
+                        <td>S₄ - Восстановление</td>
+                        <td>4.5%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Section 4: Interpretation -->
+        <div class="section">
+            <h2 class="section-title"> Интерпретация Результатов</h2>
+            <div class="interpretation">
+                <p style="font-size: 1.1em; font-weight: 600; color: #667eea; margin-bottom: 20px;">
+                    В долгосрочной перспективе система Hammilha будет находиться:
+                </p>
+
+                <h3> 73.2% времени в нормальном состоянии</h3>
+                <p>Это хороший показатель для платформы с ограниченным бюджетом ($100/месяц). Большинство запросов обрабатываются быстро, клиенты получают услугу в течение 10 минут.</p>
+
+                <h3> 17.5% времени в состоянии деградации</h3>
+                <p>Это критично! Почти 1/5 времени сервис работает медленно, что увеличивает время ожидания клиентов с 10 до 20-30 минут. <strong>Причина:</strong> слабое 3G покрытие в пустынных регионах Саудовской Аравии.</p>
+
+                <h3> 4.8% времени в полном отказе</h3>
+                <p>~35 часов в месяц платформа недоступна. Это приведёт к потере клиентов и операторов Sattaha. <strong>Необходимо:</strong> срочно внедрить систему кэширования координат.</p>
+
+                <h3> 4.5% времени в режиме восстановления</h3>
+                <p>Резервные механизмы (ручной ввод адреса, SMS) работают недостаточно эффективно. Нужно улучшить офлайн-режим и автоматизировать переключение на резервные системы.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Проект: Hammilha | Казанский Федеральный Университет | 2025
+    </div>
+</body>
+</html>
